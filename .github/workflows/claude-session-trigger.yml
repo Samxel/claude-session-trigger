@@ -1,0 +1,70 @@
+name: Claude Session Trigger
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 4 * * *'   # UTC
+    - cron: '0 15 * * *'  # UTC
+
+permissions:
+  id-token: write
+  issues: write
+
+concurrency:
+  group: claude-session-trigger
+  cancel-in-progress: false
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: start claude session
+        id: claude
+        continue-on-error: true
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: "just reply with the word: ok"
+          claude_args: |
+            --max-turns 1
+            --model haiku
+          settings: |
+            {
+              "env": {
+                "MAX_THINKING_TOKENS": "0",
+                "CLAUDE_CODE_EFFORT_LEVEL": "low"
+              }
+            }
+
+      - name: check failure reason
+        id: reason
+        if: steps.claude.outputs.conclusion == 'failure' || steps.claude.outcome == 'failure'
+        run: |
+          file="${{ steps.claude.outputs.execution_file }}"
+          if [ -f "$file" ] && grep -qiE "usage limit|rate_limit_error|status.?429" "$file"; then
+            echo "reason=usage_limit" >> "$GITHUB_OUTPUT"
+          else
+            echo "reason=auth" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: note usage limit already exhausted
+        if: steps.reason.outputs.reason == 'usage_limit'
+        run: |
+          echo "### Session not started" >> "$GITHUB_STEP_SUMMARY"
+          echo "Usage limit already exhausted." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: create issue if token expired
+        if: steps.reason.outputs.reason == 'auth'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --title "Claude Session Trigger Failed" \
+            --repo ${{ github.repository }} \
+            --body-file - <<EOF
+          Workflow could not start a session. Check if CLAUDE_CODE_OAUTH_TOKEN expired.
+          Read the README.md on how to create a new token.
+
+          Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          EOF
