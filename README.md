@@ -10,15 +10,13 @@ at fixed times (ideally before you start working) so you get more out of your cl
 
 ## Setup
 
-Generate a token on a machine with a browser:
-
+1. Fork this repo & edit the cron job time in [the workflow file](.github/workflows/claude-session-trigger.yml) as you please.
+2. Generate a token on a machine with a browser:
 ```bash
-claude setup-token
+   claude setup-token
 ```
-
-Copy the `sk-ant-oat01-...` string it prints.
-
-In the repo: **Settings → Secrets and variables → Actions → New repository secret**
+3. Copy the `sk-ant-oat01-...` string it prints.
+4. In the repo: **Settings → Secrets and variables → Actions → New repository secret**
 
 | Name | Value |
 | --- | --- |
