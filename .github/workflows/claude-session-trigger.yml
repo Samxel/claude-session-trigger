@@ -3,8 +3,8 @@ name: Claude Session Trigger
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 4 * * *'   # UTC
-    - cron: '0 15 * * *'  # UTC
+    - cron: '27 4 * * *'   # UTC
+    - cron: '23 15 * * *'  # UTC
 
 permissions:
   id-token: write
